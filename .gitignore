@@ -1,0 +1,9 @@
+node_modules/
+reports/html/
+reports/allure-results/
+reports/allure-report/
+.env
+environments/dev.runtime.json
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,55 @@
+{
+  "name": "scalable-api-testing-framework-newman-ci-cd",
+  "version": "1.0.0",
+  "description": "Production-grade API Automation Testing Framework using Postman & Newman for SaaS/e-commerce backends",
+  "author": "QA Automation Engineer",
+  "license": "MIT",
+  "scripts": {
+    "start:mock": "node mock-api/server.js",
+    "test": "npm run test:dev",
+    "test:newman:dev": "newman run collections/SaaS_API_Full_Suite.postman_collection.json --environment environments/dev.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/dev-report.html --reporter-htmlextra-title \"SaaS API Test Report - DEV\" --reporter-htmlextra-darkTheme",
+    "test:newman:staging": "newman run collections/SaaS_API_Full_Suite.postman_collection.json --environment environments/staging.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/staging-report.html --reporter-htmlextra-title \"SaaS API Test Report - STAGING\" --reporter-htmlextra-darkTheme",
+    "test:newman:auth": "newman run collections/01_Auth.postman_collection.json --environment environments/dev.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/auth-report.html",
+    "test:newman:users": "newman run collections/01_Auth.postman_collection.json --environment environments/dev.postman_environment.json --export-environment environments/dev.runtime.json && newman run collections/02_Users.postman_collection.json --environment environments/dev.runtime.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/users-report.html",
+    "test:newman:products": "newman run collections/01_Auth.postman_collection.json --environment environments/dev.postman_environment.json --export-environment environments/dev.runtime.json && newman run collections/03_Products.postman_collection.json --environment environments/dev.runtime.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/products-report.html",
+    "test:newman:cart": "newman run collections/01_Auth.postman_collection.json --environment environments/dev.postman_environment.json --export-environment environments/dev.runtime.json && newman run collections/04_Cart.postman_collection.json --environment environments/dev.runtime.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/cart-report.html",
+    "test:newman:orders": "newman run collections/05_Orders.postman_collection.json --environment environments/dev.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reports/html/orders-report.html",
+    "test:newman:allure": "newman run collections/SaaS_API_Full_Suite.postman_collection.json --environment environments/dev.postman_environment.json --reporters cli,allure --reporter-allure-export reports/allure-results",
+    "test:dev": "node scripts/run-with-mock.js npm run test:newman:dev",
+    "test:staging": "node scripts/run-with-mock.js npm run test:newman:staging",
+    "test:auth": "node scripts/run-with-mock.js npm run test:newman:auth",
+    "test:users": "node scripts/run-with-mock.js npm run test:newman:users",
+    "test:products": "node scripts/run-with-mock.js npm run test:newman:products",
+    "test:cart": "node scripts/run-with-mock.js npm run test:newman:cart",
+    "test:orders": "node scripts/run-with-mock.js npm run test:newman:orders",
+    "test:allure": "node scripts/run-with-mock.js npm run test:newman:allure",
+    "allure:report": "allure generate reports/allure-results --clean -o reports/allure-report",
+    "allure:open": "allure open reports/allure-report",
+    "lint": "echo 'No linting required for JSON collections'",
+    "clean": "rimraf reports/html reports/allure-results reports/allure-report && mkdir -p reports/html reports/allure-results"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "newman": "^6.1.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  },
+  "devDependencies": {
+    "newman-reporter-allure": "^1.0.3",
+    "rimraf": "^5.0.5"
+  },
+  "keywords": [
+    "api-testing",
+    "postman",
+    "newman",
+    "qa-automation",
+    "ci-cd",
+    "saas",
+    "e-commerce",
+    "github-actions",
+    "rest-api",
+    "test-automation"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

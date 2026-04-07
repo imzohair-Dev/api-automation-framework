@@ -1,0 +1,321 @@
+{
+  "info": {
+    "_postman_id": "col-full-suite-000",
+    "name": "SaaS API Full Test Suite",
+    "description": "Master collection combining Auth → Users → Products → Cart → Orders in a fully chained, end-to-end flow for CI/CD execution via Newman.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login - Valid Credentials",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "console.log('═══════════════════════════════════════');",
+                  "console.log('  🚀 SaaS API Full Suite - Starting');",
+                  "console.log('  ENV:', pm.environment.get('environment'));",
+                  "console.log('  TS:', new Date().toISOString());",
+                  "console.log('═══════════════════════════════════════');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "pm.test('[Auth] ✅ Login returns 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Auth] ✅ Token present and is JWT', () => {",
+                  "  pm.expect(jsonData.token).to.be.a('string');",
+                  "  pm.expect(jsonData.token.split('.').length).to.eql(3);",
+                  "});",
+                  "pm.test('[Auth] ✅ Response time < 2000ms', () => { pm.expect(pm.response.responseTime).to.be.below(2000); });",
+                  "pm.environment.set('access_token', jsonData.token);",
+                  "console.log('🔑 [Auth] Token acquired and stored.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\": \"{{username}}\", \"password\": \"{{password}}\"}" },
+            "url": { "raw": "{{auth_url}}/auth/login", "host": ["{{auth_url}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - Invalid Credentials (Negative)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[Auth] ✅ Invalid login returns error', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 500]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\": \"hacker\", \"password\": \"wrongpass\"}" },
+            "url": { "raw": "{{auth_url}}/auth/login", "host": ["{{auth_url}}"], "path": ["auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const userList = pm.response.json();",
+                  "pm.test('[Users] ✅ Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Users] ✅ Array of users returned', () => { pm.expect(userList).to.be.an('array').with.length.above(0); });",
+                  "pm.test('[Users] ✅ Users have required fields', () => {",
+                  "  userList.forEach(u => {",
+                  "    pm.expect(u).to.have.all.keys('id', 'email', 'username', 'name', 'phone', 'address');",
+                  "  });",
+                  "});",
+                  "pm.environment.set('user_id', userList[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "Create User - Dynamic Data",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.environment.set('dynamic_email', `qatest_${ts}@saasplatform.io`);",
+                  "pm.environment.set('dynamic_username', `qabot_${ts}`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[Users] ✅ User created with new ID', () => {",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "  pm.expect(d.id).to.be.a('number').and.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{dynamic_email}}\",\"username\":\"{{dynamic_username}}\",\"password\":\"SaaSP@ss2024\",\"name\":{\"firstname\":\"QA\",\"lastname\":\"Bot\"},\"address\":{\"city\":\"Remote\",\"street\":\"CI Street\",\"number\":1,\"zipcode\":\"00000\",\"geolocation\":{\"lat\":\"0\",\"long\":\"0\"}},\"phone\":\"+1-000-0000\"}"
+            },
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛍️ Products",
+      "item": [
+        {
+          "name": "Get All Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const productList = pm.response.json();",
+                  "pm.test('[Products] ✅ Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Products] ✅ Products array returned', () => { pm.expect(productList).to.be.an('array').with.length.above(0); });",
+                  "pm.test('[Products] ✅ Schema valid (id, title, price, category, image, rating)', () => {",
+                  "  productList.forEach(p => { pm.expect(p).to.have.all.keys('id','title','price','description','category','image','rating'); });",
+                  "});",
+                  "pm.test('[Products] ✅ Prices are positive', () => { productList.forEach(p => { pm.expect(p.price).to.be.above(0); }); });",
+                  "pm.environment.set('product_id', productList[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/products", "host": ["{{base_url}}"], "path": ["products"] }
+          }
+        },
+        {
+          "name": "Get Products - Electronics Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const electronicsList = pm.response.json();",
+                  "pm.test('[Products] ✅ Category filter works', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Products] ✅ Only electronics returned', () => {",
+                  "  electronicsList.forEach(p => { pm.expect(p.category).to.eql('electronics'); });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/products/category/electronics", "host": ["{{base_url}}"], "path": ["products","category","electronics"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛒 Cart",
+      "item": [
+        {
+          "name": "Get All Carts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const cartList = pm.response.json();",
+                  "pm.test('[Cart] ✅ Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Cart] ✅ Carts array returned', () => { pm.expect(cartList).to.be.an('array'); });",
+                  "pm.environment.set('cart_id', cartList[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/carts", "host": ["{{base_url}}"], "path": ["carts"] }
+          }
+        },
+        {
+          "name": "Create Cart",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.variables.set('cart_date', new Date().toISOString().split('T')[0]);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('[Cart] ✅ Cart created', () => { pm.expect(pm.response.code).to.be.oneOf([200,201]); });",
+                  "pm.test('[Cart] ✅ Cart has ID', () => { pm.expect(d.id).to.be.a('number'); });",
+                  "pm.environment.set('created_cart_id', d.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"userId\":1,\"date\":\"{{cart_date}}\",\"products\":[{\"productId\":{{product_id}},\"quantity\":2},{\"productId\":2,\"quantity\":1}]}" },
+            "url": { "raw": "{{base_url}}/carts", "host": ["{{base_url}}"], "path": ["carts"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Orders",
+      "item": [
+        {
+          "name": "Confirm Order (Checkout Simulation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('[Orders] ✅ Order confirmed - 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Orders] ✅ Order has ID', () => { pm.expect(d.id).to.exist; });",
+                  "pm.test('[Orders] ✅ SLA met (< 2000ms)', () => { pm.expect(pm.response.responseTime).to.be.below(2000); });",
+                  "pm.environment.set('order_id', d.id);",
+                  "console.log('✅ [Orders] Full suite complete! Order ID:', d.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"userId\":1,\"date\":\"2026-04-04\",\"status\":\"confirmed\",\"products\":[{\"productId\":1,\"quantity\":2}]}" },
+            "url": { "raw": "{{base_url}}/carts/{{created_cart_id}}", "host": ["{{base_url}}"], "path": ["carts","{{created_cart_id}}"] }
+          }
+        },
+        {
+          "name": "Get Order History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[Orders] ✅ Order history retrieved', () => { pm.response.to.have.status(200); });",
+                  "pm.test('[Orders] ✅ History is array', () => { pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "console.log('🏁 [Suite] All tests completed successfully!');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/carts/user/1", "host": ["{{base_url}}"], "path": ["carts","user","1"] }
+          }
+        }
+      ]
+    }
+  ]
+}

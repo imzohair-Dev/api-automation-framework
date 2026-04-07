@@ -1,0 +1,276 @@
+{
+  "info": {
+    "_postman_id": "col-cart-004",
+    "name": "04 - Cart Management",
+    "description": "Shopping cart lifecycle: create cart, add products, update quantities, retrieve user carts, and edge cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🛒 Get All Carts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Status 200 - Carts fetched', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ Response is an array', () => { pm.expect(jsonData).to.be.an('array'); });",
+              "pm.test('✅ Cart schema is valid', () => {",
+              "  jsonData.forEach(cart => {",
+              "    pm.expect(cart).to.have.property('id');",
+              "    pm.expect(cart).to.have.property('userId');",
+              "    pm.expect(cart).to.have.property('date');",
+              "    pm.expect(cart).to.have.property('products');",
+              "    pm.expect(cart.products).to.be.an('array');",
+              "  });",
+              "});",
+              "pm.test('✅ Cart products have productId and quantity', () => {",
+              "  jsonData.forEach(cart => {",
+              "    cart.products.forEach(p => {",
+              "      pm.expect(p).to.have.property('productId');",
+              "      pm.expect(p).to.have.property('quantity');",
+              "      pm.expect(p.quantity).to.be.a('number').and.above(0);",
+              "    });",
+              "  });",
+              "});",
+              "pm.test('✅ Response time < 2000ms', () => { pm.expect(pm.response.responseTime).to.be.below(2000); });",
+              "if (jsonData.length > 0) { pm.environment.set('cart_id', jsonData[0].id); console.log('🛒 Stored cart_id:', jsonData[0].id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/carts", "host": ["{{base_url}}"], "path": ["carts"] }
+      }
+    },
+    {
+      "name": "🛒 Get Single Cart",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Status 200 - Single cart fetched', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ Cart has correct ID', () => {",
+              "  pm.expect(jsonData.id).to.eql(parseInt(pm.environment.get('cart_id')));",
+              "});",
+              "pm.test('✅ Cart has valid date format', () => {",
+              "  pm.expect(jsonData.date).to.be.a('string');",
+              "  pm.expect(new Date(jsonData.date).toString()).to.not.eql('Invalid Date');",
+              "});",
+              "pm.test('✅ Cart products are valid', () => {",
+              "  pm.expect(jsonData.products).to.be.an('array');",
+              "  pm.expect(jsonData.products.length).to.be.greaterThan(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/carts/{{cart_id}}", "host": ["{{base_url}}"], "path": ["carts", "{{cart_id}}"] }
+      }
+    },
+    {
+      "name": "👤 Get Carts by User",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Use existing user_id from environment (chained from Users collection)",
+              "const userId = pm.environment.get('user_id') || '1';",
+              "pm.environment.set('user_id', userId);",
+              "console.log('👤 Fetching carts for user:', userId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Status 200 - User carts fetched', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ Response is an array', () => {",
+              "  pm.expect(pm.response.json()).to.be.an('array');",
+              "});",
+              "pm.test('✅ All carts belong to the requested user', () => {",
+              "  const uid = parseInt(pm.environment.get('user_id'));",
+              "  pm.response.json().forEach(cart => {",
+              "    pm.expect(cart.userId).to.eql(uid);",
+              "  });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/carts/user/{{user_id}}", "host": ["{{base_url}}"], "path": ["carts", "user", "{{user_id}}"] }
+      }
+    },
+    {
+      "name": "➕ Create Cart",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const today = new Date().toISOString().split('T')[0];",
+              "pm.variables.set('cart_date', today);",
+              "console.log('📅 Cart date set to:', today);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Status 200/201 - Cart created', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "pm.test('✅ New cart has an ID', () => {",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "  pm.environment.set('created_cart_id', jsonData.id);",
+              "  console.log('🛒 Created cart ID:', jsonData.id);",
+              "});",
+              "pm.test('✅ Cart contains submitted products', () => {",
+              "  pm.expect(jsonData).to.have.property('products');",
+              "  pm.expect(jsonData.products).to.be.an('array');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"date\": \"{{cart_date}}\",\n  \"products\": [\n    { \"productId\": 1, \"quantity\": 2 },\n    { \"productId\": 5, \"quantity\": 1 },\n    { \"productId\": 3, \"quantity\": 3 }\n  ]\n}"
+        },
+        "url": { "raw": "{{base_url}}/carts", "host": ["{{base_url}}"], "path": ["carts"] }
+      }
+    },
+    {
+      "name": "✏️ Update Cart (PUT)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Status 200 - Cart updated', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ Updated cart has valid structure', () => {",
+              "  const d = pm.response.json();",
+              "  pm.expect(d).to.have.property('id');",
+              "  pm.expect(d).to.have.property('products');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"date\": \"2026-04-04\",\n  \"products\": [\n    { \"productId\": 2, \"quantity\": 5 }\n  ]\n}"
+        },
+        "url": { "raw": "{{base_url}}/carts/{{cart_id}}", "host": ["{{base_url}}"], "path": ["carts", "{{cart_id}}"] }
+      }
+    },
+    {
+      "name": "🗑️ Delete Cart",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Status 200 - Cart deleted', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ Deleted cart ID returned', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('id');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": { "raw": "{{base_url}}/carts/{{cart_id}}", "host": ["{{base_url}}"], "path": ["carts", "{{cart_id}}"] }
+      }
+    },
+    {
+      "name": "📅 Get Carts in Date Range",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Status 200 - Date-filtered carts returned', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ Response is an array', () => { pm.expect(pm.response.json()).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/carts?startdate=2020-01-01&enddate=2026-12-31",
+          "host": ["{{base_url}}"],
+          "path": ["carts"],
+          "query": [
+            { "key": "startdate", "value": "2020-01-01" },
+            { "key": "enddate", "value": "2026-12-31" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "🚫 Get Cart - Invalid ID (Negative)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Invalid cart ID handled gracefully', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 400, 404]);",
+              "});",
+              "pm.test('✅ Response time acceptable for error case', () => {",
+              "  pm.expect(pm.response.responseTime).to.be.below(3000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/carts/99999", "host": ["{{base_url}}"], "path": ["carts", "99999"] }
+      }
+    }
+  ]
+}

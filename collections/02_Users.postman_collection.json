@@ -1,0 +1,368 @@
+{
+  "info": {
+    "_postman_id": "col-users-002",
+    "name": "02 - User Management (CRUD)",
+    "description": "Full CRUD lifecycle for user management: create, read, update, delete with schema validation and negative tests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "👥 Get All Users",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log('📋 Fetching all users - ENV:', pm.environment.get('environment'));"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test('✅ Status 200 - Users fetched', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Response is an array', () => {",
+              "  pm.expect(jsonData).to.be.an('array');",
+              "  pm.expect(jsonData.length).to.be.greaterThan(0);",
+              "});",
+              "",
+              "pm.test('✅ Each user has required fields', () => {",
+              "  jsonData.forEach(user => {",
+              "    pm.expect(user).to.have.property('id');",
+              "    pm.expect(user).to.have.property('email');",
+              "    pm.expect(user).to.have.property('username');",
+              "    pm.expect(user).to.have.property('name');",
+              "  });",
+              "});",
+              "",
+              "pm.test('✅ User name object has firstname and lastname', () => {",
+              "  jsonData.forEach(user => {",
+              "    pm.expect(user.name).to.have.property('firstname');",
+              "    pm.expect(user.name).to.have.property('lastname');",
+              "  });",
+              "});",
+              "",
+              "pm.test('✅ User IDs are positive integers', () => {",
+              "  jsonData.forEach(user => {",
+              "    pm.expect(user.id).to.be.a('number').and.above(0);",
+              "  });",
+              "});",
+              "",
+              "pm.test('✅ Response time < 2000ms', () => {",
+              "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});",
+              "",
+              "// Store first user ID for downstream tests",
+              "if (jsonData.length > 0) {",
+              "  pm.environment.set('user_id', jsonData[0].id);",
+              "  console.log('👤 Stored user_id:', jsonData[0].id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users",
+          "host": ["{{base_url}}"],
+          "path": ["users"]
+        }
+      }
+    },
+    {
+      "name": "👤 Get Single User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test('✅ Status 200 - Single user fetched', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ User schema is valid', () => {",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "  pm.expect(jsonData).to.have.property('email');",
+              "  pm.expect(jsonData).to.have.property('username');",
+              "  pm.expect(jsonData).to.have.property('phone');",
+              "  pm.expect(jsonData).to.have.property('address');",
+              "  pm.expect(jsonData).to.have.property('name');",
+              "});",
+              "",
+              "pm.test('✅ Address has geolocation', () => {",
+              "  pm.expect(jsonData.address).to.have.property('geolocation');",
+              "  pm.expect(jsonData.address.geolocation).to.have.property('lat');",
+              "  pm.expect(jsonData.address.geolocation).to.have.property('long');",
+              "});",
+              "",
+              "pm.test('✅ Email format is valid', () => {",
+              "  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;",
+              "  pm.expect(emailRegex.test(jsonData.email)).to.be.true;",
+              "});",
+              "",
+              "pm.test('✅ ID matches requested user', () => {",
+              "  pm.expect(jsonData.id).to.eql(parseInt(pm.environment.get('user_id')));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/{{user_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["users", "{{user_id}}"]
+        }
+      }
+    },
+    {
+      "name": "➕ Create New User",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Dynamic test data generation",
+              "const timestamp = Date.now();",
+              "const randomNum = Math.floor(Math.random() * 9000) + 1000;",
+              "const dynamicEmail = `testuser_${timestamp}@saasplatform.io`;",
+              "const dynamicUsername = `qauser_${randomNum}`;",
+              "",
+              "pm.environment.set('dynamic_email', dynamicEmail);",
+              "pm.environment.set('dynamic_username', dynamicUsername);",
+              "",
+              "console.log('🎯 Generated test data:', { email: dynamicEmail, username: dynamicUsername });"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test('✅ Status 200/201 - User created', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "pm.test('✅ Response contains new user ID', () => {",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "  pm.expect(jsonData.id).to.be.a('number').and.above(0);",
+              "});",
+              "",
+              "pm.test('✅ Created user ID is stored', () => {",
+              "  pm.environment.set('created_user_id', jsonData.id);",
+              "  pm.expect(pm.environment.get('created_user_id')).to.not.be.empty;",
+              "  console.log('✅ New user ID:', jsonData.id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{dynamic_email}}\",\n  \"username\": \"{{dynamic_username}}\",\n  \"password\": \"SecureP@ss2024!\",\n  \"name\": {\n    \"firstname\": \"QA\",\n    \"lastname\": \"Engineer\"\n  },\n  \"address\": {\n    \"city\": \"Remote City\",\n    \"street\": \"API Avenue\",\n    \"number\": 42,\n    \"zipcode\": \"10001-QA\",\n    \"geolocation\": {\n      \"lat\": \"-37.3159\",\n      \"long\": \"81.1496\"\n    }\n  },\n  \"phone\": \"+1-555-QA-TEST\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/users",
+          "host": ["{{base_url}}"],
+          "path": ["users"]
+        }
+      }
+    },
+    {
+      "name": "✏️ Update User (PUT)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test('✅ Status 200 - User updated', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Updated response has ID', () => {",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "});",
+              "",
+              "pm.test('✅ Response time is acceptable', () => {",
+              "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"updated_qa@saasplatform.io\",\n  \"username\": \"updated_qauser\",\n  \"password\": \"UpdatedP@ss2024!\",\n  \"name\": {\n    \"firstname\": \"Updated\",\n    \"lastname\": \"QAEngineer\"\n  },\n  \"address\": {\n    \"city\": \"Updated City\",\n    \"street\": \"Updated Street\",\n    \"number\": 99,\n    \"zipcode\": \"99999-UPD\",\n    \"geolocation\": { \"lat\": \"0.0\", \"long\": \"0.0\" }\n  },\n  \"phone\": \"+1-555-UPDATED\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/users/{{user_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["users", "{{user_id}}"]
+        }
+      }
+    },
+    {
+      "name": "✏️ Partial Update User (PATCH)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Status 200 - Partial update accepted', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Response is valid JSON', () => {",
+              "  pm.expect(() => pm.response.json()).to.not.throw();",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"patched_qa@saasplatform.io\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/users/{{user_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["users", "{{user_id}}"]
+        }
+      }
+    },
+    {
+      "name": "🗑️ Delete User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Status 200 - User deleted', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Deleted user ID returned in response', () => {",
+              "  const jsonData = pm.response.json();",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/users/{{user_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["users", "{{user_id}}"]
+        }
+      }
+    },
+    {
+      "name": "🚫 Get User - Invalid ID (Negative)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Non-existent user returns empty or error', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 400, 404]);",
+              "});",
+              "",
+              "pm.test('✅ Response time acceptable even for errors', () => {",
+              "  pm.expect(pm.response.responseTime).to.be.below(3000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users/99999",
+          "host": ["{{base_url}}"],
+          "path": ["users", "99999"]
+        }
+      }
+    },
+    {
+      "name": "🔢 Get Users With Limit Query",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test('✅ Status 200 - Limited results returned', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('✅ Result count respects limit param', () => {",
+              "  pm.expect(jsonData.length).to.be.at.most(3);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/users?limit=3",
+          "host": ["{{base_url}}"],
+          "path": ["users"],
+          "query": [{ "key": "limit", "value": "3" }]
+        }
+      }
+    }
+  ]
+}

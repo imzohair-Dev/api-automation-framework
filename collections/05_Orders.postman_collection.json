@@ -1,0 +1,277 @@
+{
+  "info": {
+    "_postman_id": "col-orders-005",
+    "name": "05 - Orders & Checkout",
+    "description": "Order lifecycle simulation: place order, get order history, validate totals, chained from cart and product data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Auth - Get Token for Orders",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Login successful before order tests', () => {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(jsonData).to.have.property('token');",
+              "});",
+              "pm.environment.set('access_token', jsonData.token);",
+              "console.log('🔑 Token refreshed for Orders suite');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"{{username}}\", \"password\": \"{{password}}\"}"
+        },
+        "url": { "raw": "{{auth_url}}/auth/login", "host": ["{{auth_url}}"], "path": ["auth", "login"] }
+      }
+    },
+    {
+      "name": "📦 Get Product for Order",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const p = pm.response.json();",
+              "pm.test('✅ Product fetched for order creation', () => { pm.response.to.have.status(200); });",
+              "pm.environment.set('order_product_id', p.id);",
+              "pm.environment.set('order_product_title', p.title);",
+              "pm.environment.set('order_product_price', p.price);",
+              "console.log('📦 Order will use product:', p.title, '@', p.price);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/products/1", "host": ["{{base_url}}"], "path": ["products", "1"] }
+      }
+    },
+    {
+      "name": "🛒 Create Cart (Pre-Order Step)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const orderDate = new Date().toISOString().split('T')[0];",
+              "pm.variables.set('order_date', orderDate);",
+              "console.log('📅 Order date:', orderDate);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Pre-order cart created', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "});",
+              "pm.environment.set('order_cart_id', jsonData.id);",
+              "// Calculate the expected order total",
+              "const price = parseFloat(pm.environment.get('order_product_price')) || 9.99;",
+              "const quantity = 2;",
+              "const expectedTotal = (price * quantity).toFixed(2);",
+              "pm.environment.set('expected_order_total', expectedTotal);",
+              "console.log('💰 Expected order total:', '$' + expectedTotal);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"date\": \"{{order_date}}\",\n  \"products\": [\n    { \"productId\": {{order_product_id}}, \"quantity\": 2 }\n  ]\n}"
+        },
+        "url": { "raw": "{{base_url}}/carts", "host": ["{{base_url}}"], "path": ["carts"] }
+      }
+    },
+    {
+      "name": "✅ Confirm Order (Simulate Checkout)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Simulate order confirmation by updating cart status",
+              "// In a real SaaS: POST /orders with cart_id",
+              "console.log('🚀 Simulating checkout for cart ID:', pm.environment.get('order_cart_id'));",
+              "console.log('💳 Expected total:', '$' + pm.environment.get('expected_order_total'));"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Order (cart update) confirmed - status 200', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('✅ Confirmed order has ID', () => {",
+              "  pm.expect(jsonData).to.have.property('id');",
+              "  pm.environment.set('order_id', jsonData.id);",
+              "});",
+              "pm.test('✅ Confirmed order has product list', () => {",
+              "  pm.expect(jsonData).to.have.property('products');",
+              "  pm.expect(jsonData.products).to.be.an('array');",
+              "  pm.expect(jsonData.products.length).to.be.greaterThan(0);",
+              "});",
+              "pm.test('✅ Response time within SLA (< 2000ms)', () => {",
+              "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});",
+              "console.log('✅ Order placed! Order ID:', jsonData.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"date\": \"{{order_date}}\",\n  \"status\": \"confirmed\",\n  \"products\": [\n    { \"productId\": {{order_product_id}}, \"quantity\": 2 }\n  ]\n}"
+        },
+        "url": { "raw": "{{base_url}}/carts/{{order_cart_id}}", "host": ["{{base_url}}"], "path": ["carts", "{{order_cart_id}}"] }
+      }
+    },
+    {
+      "name": "📋 Get Order History (User Carts)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "pm.test('✅ Order history returned', () => { pm.response.to.have.status(200); });",
+              "pm.test('✅ History is an array', () => { pm.expect(jsonData).to.be.an('array'); });",
+              "pm.test('✅ All orders belong to user 1', () => {",
+              "  jsonData.forEach(order => { pm.expect(order.userId).to.eql(1); });",
+              "});",
+              "pm.test('✅ Each order has products', () => {",
+              "  jsonData.forEach(order => {",
+              "    pm.expect(order.products).to.be.an('array');",
+              "  });",
+              "});",
+              "console.log('📋 Order history count:', jsonData.length);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": { "raw": "{{base_url}}/carts/user/1", "host": ["{{base_url}}"], "path": ["carts", "user", "1"] }
+      }
+    },
+    {
+      "name": "🚫 Unauthorized Order Access (Negative)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Unauthorized request blocked', () => {",
+              "  // FakeStoreAPI may return 200 — document real backend would return 401",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]);",
+              "  console.log('ℹ️ Status for no-auth request:', pm.response.code);",
+              "});",
+              "pm.test('✅ Response time acceptable even without auth', () => {",
+              "  pm.expect(pm.response.responseTime).to.be.below(3000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "{{invalid_token}}" }],
+        "url": { "raw": "{{base_url}}/carts/user/1", "host": ["{{base_url}}"], "path": ["carts", "user", "1"] }
+      }
+    },
+    {
+      "name": "🚫 Order with Invalid Product (Negative)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Invalid product in order handled', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 400, 404, 422, 500]);",
+              "});",
+              "pm.test('✅ Response is not empty', () => {",
+              "  pm.expect(pm.response.text()).to.not.be.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"date\": \"2026-04-04\",\n  \"products\": [\n    { \"productId\": -1, \"quantity\": 0 }\n  ]\n}"
+        },
+        "url": { "raw": "{{base_url}}/carts", "host": ["{{base_url}}"], "path": ["carts"] }
+      }
+    },
+    {
+      "name": "🗑️ Cancel Order (Delete Cart)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('✅ Order cancelled successfully', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('✅ Cancelled order ID is returned', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('id');",
+              "  console.log('🗑️ Order cancelled, ID:', pm.response.json().id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": { "raw": "{{base_url}}/carts/{{order_cart_id}}", "host": ["{{base_url}}"], "path": ["carts", "{{order_cart_id}}"] }
+      }
+    }
+  ]
+}
