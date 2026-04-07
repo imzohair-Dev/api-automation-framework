@@ -1,22 +1,7 @@
 # 🚀 Scalable API Testing Framework — Newman + CI/CD
 
-<div align="center">
-
-![API Testing](https://img.shields.io/badge/API%20Testing-Postman%20%2B%20Newman-FF6C37?style=for-the-badge&logo=postman)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions)
-![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Tests](https://img.shields.io/badge/Test%20Cases-50%2B-blueviolet?style=for-the-badge)
-![Coverage](https://img.shields.io/badge/API%20Coverage-Auth%20%7C%20Users%20%7C%20Products%20%7C%20Cart%20%7C%20Orders-orange?style=for-the-badge)
-
 **A production-grade API Automation Testing Framework simulating a real-world SaaS/e-commerce backend.**  
 Built with Postman Collections, Newman CLI, GitHub Actions CI/CD, and HTML reporting.
-
-[📋 View Collections](#-postman-collections) • [⚙️ Quick Start](#-quick-start) • [📊 Reports](#-test-reports) • [🔄 CI/CD](#-cicd-pipeline) • [💼 Hire Me](#-lets-work-together)
-
-</div>
-
----
 
 ## 📌 Project Overview
 
@@ -425,24 +410,7 @@ I specialize in **API automation testing** that gives engineering teams **confid
 
 ### 📬 Get In Touch
 
-| Channel | Link |
-|---|---|
-| 📧 Email | `your.email@domain.com` |
-| 💼 LinkedIn | [linkedin.com/in/yourprofile](https://linkedin.com) |
-| 🐙 GitHub | [github.com/yourusername](https://github.com) |
-| 🌐 Portfolio | [yourportfolio.com](https://yourportfolio.com) |
-
 > **Currently available for:** Remote contract work, freelance API testing engagements, and QA consulting for startups.
-
----
-
-## 📄 License
-
-MIT License — feel free to fork, adapt, and use as a starting point for your own projects.
-
----
-
-<div align="center">
 
 **⭐ Star this repo if it helped you — it takes 1 second and means a lot!**
 
